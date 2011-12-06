@@ -99,8 +99,9 @@ namespace Ants {
 	public class Ant : TeamLocation, IEquatable<Ant> 
   {
     public Goal AntGoal = Goal.Food;
-	  public Location Destination = new Location(-1, -1);
+	  public Location Destination = new Location(-1, -1); // Location (-1, -1) is interpreted as "None"
 	  public List<Location> Path = new List<Location>();
+    public bool DoNotMove;
 
     public enum Goal
     {
@@ -113,6 +114,7 @@ namespace Ants {
 
     public bool NoDestination()
     {
+      // Location (-1, -1) is interpreted as "None"
       if (Destination.Col == -1 && Destination.Row == -1)
         return true;
       return false;
