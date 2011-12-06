@@ -11,36 +11,10 @@ namespace Ants
 		public override void DoTurn (IGameState state)
 		{
 		  var newLocations = new List<Location>();
-		  var foodComparatorList = new List<FoodComparator>();
-		  var myFoodComparatorListSorter = new FoodComparatorListSorter();
 
-      ////
-      ////  Loop trough all my ants and foods to list all the matching possibilities
-      ////
-      if(state.FoodTiles.Count > 0)
-        foreach (Ant ant in state.MyAnts)
-          if (ant.AntGoal == Ant.Goal.Food && ant.NoDestination())  // (Ant)  If goal is food and no destination matched
-            foreach (Location foodLocation in state.FoodTiles)      // (Food) For all known food locations
-              foodComparatorList.Add(new FoodComparator(state.GetDistance(ant, foodLocation), ant, foodLocation));
-
-      // If the list is not empty, sort it and keep only the best associations
-      if (foodComparatorList.Count > 0)
-      {
-        // Sort the list with custom sorter (sort with distance)
-        foodComparatorList.Sort(myFoodComparatorListSorter);
-
-        while (foodComparatorList.Count > 0)
-        {
-          // Set the best match destination (now at first position in the list) to the respective ant
-          state.MyAnts.Find(iAnt => iAnt.Equals(foodComparatorList[0].Ant)).Destination = foodComparatorList[0].Food;
-
-          // Save temporarily the Comparator matched to remove all the repetitive ants & foods from the list
-          FoodComparator wSelectedFoodComparator = foodComparatorList[0];
-          foreach (FoodComparator fc in foodComparatorList)
-            if (fc.Ant.Equals(wSelectedFoodComparator.Ant) || fc.Food.Equals(wSelectedFoodComparator.Food))
-              foodComparatorList.Remove(fc);
-        }
-      }
+      // Match ant to closer food if food is known (FoodTiles)
+      if (state.FoodTiles.Count > 0)
+        MatchAntsToFoods(state);
 
 		  // loop through all my ants and try to give them orders
 			foreach (Ant ant in state.MyAnts) 
@@ -66,7 +40,7 @@ namespace Ants
           if (ant.DoNotMove)
           {
             ant.DoNotMove = false;
-            break;
+            break;  // Break to pass to next ant
           }
 
           // GetIsPassable returns true if the location is land
@@ -74,8 +48,7 @@ namespace Ants
           {
 						IssueOrder(ant, direction);
             newLocations.Add(newLoc);
-						// stop now, don't give 1 and multiple orders
-						break;
+						break;  // Break to pass to next ant  
 					}
 				}
 				
@@ -113,5 +86,37 @@ namespace Ants
     {
       public int Compare(FoodComparator obj1, FoodComparator obj2) { return obj1.Distance.CompareTo(obj2.Distance); }
     }
-	}
+
+    ////
+    ////  Loop trough all my ants and foods to list all the matching possibilities
+    ////
+    public void MatchAntsToFoods(IGameState state)
+    {
+      var foodComparatorList = new List<FoodComparator>();
+      var myFoodComparatorListSorter = new FoodComparatorListSorter();
+
+      foreach (Ant ant in state.MyAnts)
+        if (ant.AntGoal == Ant.Goal.Food && ant.NoDestination())  // (Ant)  If goal is food and no destination matched
+          foreach (Location foodLocation in state.FoodTiles)      // (Food) For all known food locations
+            foodComparatorList.Add(new FoodComparator(state.GetDistance(ant, foodLocation), ant, foodLocation));
+
+      // If the list is not empty, sort it and keep only the best associations
+      if (foodComparatorList.Count > 0)
+      {
+        // Sort the list with custom sorter (sort with distance)
+        foodComparatorList.Sort(myFoodComparatorListSorter);
+
+        while (foodComparatorList.Count > 0)
+        {
+          // Set the best match destination (now at first position in the list) to the respective ant
+          state.MyAnts.Find(iAnt => iAnt.Equals(foodComparatorList[0].Ant)).Destination = foodComparatorList[0].Food;
+
+          // Save temporarily the Comparator matched to remove all the repetitive ants & foods from the list
+          FoodComparator wSelectedFoodComparator = foodComparatorList[0];
+          foodComparatorList.RemoveAll(iComp => iComp.Food.Equals(wSelectedFoodComparator.Food));
+          foodComparatorList.RemoveAll(iComp => iComp.Ant.Equals(wSelectedFoodComparator.Ant));
+        }
+      }
+    }
+  }
 }
