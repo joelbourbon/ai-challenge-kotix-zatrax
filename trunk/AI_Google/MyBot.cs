@@ -17,24 +17,27 @@ namespace Ants
       ////
       ////  Loop trough all my ants and foods to list all the matching possibilities
       ////
-      foreach (Ant ant in state.MyAnts)
-        if (ant.AntGoal == Ant.Goal.Food && ant.NoDestination())  // (Ant)  If goal is food and no destination matched
-          foreach (Location foodLocation in state.FoodTiles)      // (Food) For all known food locations
-            foodComparatorList.Add(new FoodComparator(state.GetDistance(ant, foodLocation), ant, foodLocation));
+      if(state.FoodTiles.Count > 0)
+        foreach (Ant ant in state.MyAnts)
+          if (ant.AntGoal == Ant.Goal.Food && ant.NoDestination())  // (Ant)  If goal is food and no destination matched
+            foreach (Location foodLocation in state.FoodTiles)      // (Food) For all known food locations
+              foodComparatorList.Add(new FoodComparator(state.GetDistance(ant, foodLocation), ant, foodLocation));
 
       // If the list is not empty, sort it and keep only the best associations
-      if(foodComparatorList.Count > 0)
+      if (foodComparatorList.Count > 0)
       {
         // Sort the list with custom sorter (sort with distance)
         foodComparatorList.Sort(myFoodComparatorListSorter);
 
-        while(foodComparatorList.Count > 0)
+        while (foodComparatorList.Count > 0)
         {
-          // Set the best match (now at first position in the list) to the respective ant
-          state.MyAnts.Find(ant => ant == foodComparatorList[0].Ant).Destination = foodComparatorList[0].Food;
+          // Set the best match destination (now at first position in the list) to the respective ant
+          state.MyAnts.Find(iAnt => iAnt.Equals(foodComparatorList[0].Ant)).Destination = foodComparatorList[0].Food;
+
+          // Save temporarily the Comparator matched to remove all the repetitive ants & foods from the list
           FoodComparator wSelectedFoodComparator = foodComparatorList[0];
           foreach (FoodComparator fc in foodComparatorList)
-            if (fc.Ant == wSelectedFoodComparator.Ant || fc.Food == wSelectedFoodComparator.Food)
+            if (fc.Ant.Equals(wSelectedFoodComparator.Ant) || fc.Food.Equals(wSelectedFoodComparator.Food))
               foodComparatorList.Remove(fc);
         }
       }
@@ -49,24 +52,24 @@ namespace Ants
 					// and give us a new location
 					Location newLoc = state.GetDestination(ant, direction);
 
+          // Verify if the wanted position is already planned by another ant
           bool isAlreadyUsed = false;
           foreach (Location loc in newLocations)
-          {
             if (newLoc == loc)
               isAlreadyUsed = true;
-          }
 
-          bool doNotMove = false;
+          // If a food spawn under an ant, do not move for that turn
           foreach(Location foodLoc in state.FoodTiles)
-          {
             if(ant.Equals(foodLoc))
-              doNotMove = true;
-          }
+              ant.DoNotMove = true;
 
+          if (ant.DoNotMove)
+          {
+            ant.DoNotMove = false;
+            break;
+          }
 
           // GetIsPassable returns true if the location is land
-          if (doNotMove) break;
-          
           if (state.GetIsPassable(newLoc) && state.GetIsUnoccupied(newLoc) && !isAlreadyUsed) 
           {
 						IssueOrder(ant, direction);
@@ -82,9 +85,14 @@ namespace Ants
 		}
 		
 		// The main that starts everything
-		public static void Main (string[] args) 
-    {
-			new Ants().PlayGame(new MyBot());
+		public static void Main (string[] args)
+		{
+#if DEBUG
+  System.Diagnostics.Debugger.Launch();
+  while (!System.Diagnostics.Debugger.IsAttached)
+  {}
+#endif
+      new Ants().PlayGame(new MyBot());
 		}
 
     public class FoodComparator
