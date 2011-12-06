@@ -100,7 +100,7 @@ namespace Ants {
   {
     public Goal AntGoal = Goal.Food;
 	  public Location Destination = new Location(-1, -1); // Location (-1, -1) is interpreted as "None"
-	  public List<Location> Path = new List<Location>();
+	  public List<Direction> Path = new List<Direction>();
     public bool DoNotMove;
 
     public enum Goal

@@ -12,19 +12,57 @@ namespace Ants
 		{
 		  var newLocations = new List<Location>();
 
-      // Match ant to closer food if food is known (FoodTiles)
+      // Match ant to closer food if:
+      //          - Ant doesn't already have a destination
+      //          - Ant is a food gatherer
+      //          - Food is known (FoodTiles)
       if (state.FoodTiles.Count > 0)
         MatchAntsToFoods(state);
 
 		  // loop through all my ants and try to give them orders
-			foreach (Ant ant in state.MyAnts) 
-      {
-				// try all the directions
-				foreach (Direction direction in Ants.Aim.Keys) 
+			foreach (Ant ant in state.MyAnts)
+			{
+        // List of possibilities with the right Logical order
+			  var possibilitiesList = new List<Possibilities>();
+			  possibilitiesList.Add(Possibilities.Path);
+        possibilitiesList.Add(Possibilities.RandomDirection);
+        possibilitiesList.Add(Possibilities.RandomDirection);
+        possibilitiesList.Add(Possibilities.RandomDirection);
+        possibilitiesList.Add(Possibilities.RandomDirection);
+
+			  var directionList = new List<Direction>();
+        directionList.Add(Direction.North);
+        directionList.Add(Direction.South);
+        directionList.Add(Direction.East);
+        directionList.Add(Direction.West);
+
+        if (!ant.NoDestination() && ant.Path.Count == 0)
         {
+          ant.Path = PathFinding(ant, ant.Destination);
+        }
+
+				// try all the directions
+        foreach (Possibilities possibility in possibilitiesList)
+        {
+          bool pathTaken = false;
+          int numDirections = 1;
+          var nextDirection = new Direction();
+
+          if(ant.Path.Count != 0 && possibility == Possibilities.Path)
+          {
+            nextDirection = ant.Path[0];
+            pathTaken = true;
+          }
+
+          else if(possibility == Possibilities.RandomDirection)
+          {
+            nextDirection = directionList[numDirections];
+            numDirections++;
+          }
+
 					// GetDestination will wrap around the map properly
 					// and give us a new location
-					Location newLoc = state.GetDestination(ant, direction);
+          Location newLoc = state.GetDestination(ant, nextDirection);
 
           // Verify if the wanted position is already planned by another ant
           bool isAlreadyUsed = false;
@@ -46,8 +84,13 @@ namespace Ants
           // GetIsPassable returns true if the location is land
           if (state.GetIsPassable(newLoc) && state.GetIsUnoccupied(newLoc) && !isAlreadyUsed) 
           {
-						IssueOrder(ant, direction);
+            IssueOrder(ant, nextDirection);
             newLocations.Add(newLoc);
+            if (pathTaken)
+              ant.Path.RemoveAt(0);
+            // If at goal, reset goal
+            if (ant.Path.Count == 0)
+              ant.Destination = new Location(-1, -1);
 						break;  // Break to pass to next ant  
 					}
 				}
@@ -117,6 +160,44 @@ namespace Ants
           foodComparatorList.RemoveAll(iComp => iComp.Ant.Equals(wSelectedFoodComparator.Ant));
         }
       }
+    }
+
+    public List<Direction> PathFinding(Location iStart, Location iGoal)
+    {
+      List<Direction> DirectionsToGoal = new List<Direction>();
+      Location updatedPosition = iStart;
+
+      while (updatedPosition != iGoal)
+      {
+        if (updatedPosition.Col < iGoal.Col)
+        {
+          updatedPosition = new Location(updatedPosition.Row, updatedPosition.Col + 1);
+          DirectionsToGoal.Add(Direction.East);
+        }
+        else if (updatedPosition.Col > iGoal.Col)
+        {
+          updatedPosition = new Location(updatedPosition.Row, updatedPosition.Col - 1);
+          DirectionsToGoal.Add(Direction.West);
+        }
+        else if (updatedPosition.Row < iGoal.Row)
+        {
+          updatedPosition = new Location(updatedPosition.Row + 1, updatedPosition.Col);
+          DirectionsToGoal.Add(Direction.North);
+        }
+        else if (updatedPosition.Row > iGoal.Row)
+        {
+          updatedPosition = new Location(updatedPosition.Row - 1, updatedPosition.Col + 1);
+          DirectionsToGoal.Add(Direction.South);
+        }
+      }
+
+      return DirectionsToGoal;
+    }
+
+    public enum Possibilities
+    {
+      Path,
+      RandomDirection
     }
   }
 }
